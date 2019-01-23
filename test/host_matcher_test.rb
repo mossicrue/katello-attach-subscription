@@ -9,6 +9,7 @@ class HostMatcherTest < Minitest::Test
       ]
   }
 
+=begin
   def test_hostname
     assert KatelloAttachSubscription::HostMatcher.match_hostname('client[0-9]+\.example\.com', 'client42.example.com')
   end
@@ -60,3 +61,4 @@ class HostMatcherTest < Minitest::Test
     refute KatelloAttachSubscription::HostMatcher.match_host(host, DUMMY_CONFIG)
   end
 end
+=end
