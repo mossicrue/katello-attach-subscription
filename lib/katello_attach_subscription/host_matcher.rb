@@ -6,9 +6,9 @@ module KatelloAttachSubscription
       valid = false unless self.match_type(config['type'], host['type'])
       puts "DEBUGGONE: valid: #{valid}"
       host_facts = host['facts'] || {}
-      config.fetch('match', []).each do |match|
+      config.fetch('facts', []).each do |match|
         matcher = match['matcher'] || 'string'
-        valid = false unless self.match_matcher(match['value'], host_facts[match['fact']], matcher)
+        valid = false unless self.match_matcher(match['value'], host_facts[match['name']], matcher)
       end
       valid
     end
