@@ -107,7 +107,6 @@ class SubMergerTest < Minitest::Test
     ]
   }
 
-=begin
   def test_normal_parse
     yaml = read_yaml_fixture("merge_sub_file")
     parsed_sub = getSubForHost(yaml["subs"], DUMMY_NORMAL)
@@ -125,7 +124,6 @@ class SubMergerTest < Minitest::Test
     parsed_sub = getSubForHost(yaml["subs"], DUMMY_OVERRIDE)
     assert_equal DUMMY_OVERRIDE_EXPECTED_SUB, parsed_sub
   end
-=end
 
   def test_merge_parse
     yaml = read_yaml_fixture("merge_sub_file")
@@ -133,12 +131,10 @@ class SubMergerTest < Minitest::Test
     assert_equal DUMMY_MERGE_EXPECTED_SUB, parsed_sub
   end
 
-=begin
   def test_keep_parse
     yaml = read_yaml_fixture("merge_sub_file")
     parsed_sub = getSubForHost(yaml["subs"], DUMMY_KEEP_PARSE)
     assert_equal DUMMY_KEEP_PARSE_EXPECTED_SUB, parsed_sub
   end
-=end
 
 end

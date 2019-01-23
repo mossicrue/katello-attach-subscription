@@ -42,9 +42,6 @@ module KatelloAttachSubscription
     def self.match_regexp(expected, actual)
       return true if expected.nil?
       return false if actual.nil?
-      puts "DEBUGGONE: expected #{expected}"
-      puts "DEBUGGONE:   actual #{actual}"
-      puts "DEBUGGONE:   result #{!!Regexp.new(expected).match(actual)}"
       !!Regexp.new(expected).match(actual)
     end
 

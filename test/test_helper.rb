@@ -15,12 +15,9 @@ end
 
 def getSubForHost(subs, host)
   parsed_final = nil
-  puts "DEBUGGONE: host: #{host}"
   subs.each do |single_sub|
     parsed = single_sub['sub_parsed']
-    puts "DEBUGGONE: result: #{KatelloAttachSubscription::HostMatcher.match_host(host, single_sub)}"
     if KatelloAttachSubscription::HostMatcher.match_host(host, single_sub)
-      puts "DEBUGGONE: single_sub: #{parsed}"
       layer_command = single_sub['sub_layer'] || 'stop_parsing'
       parsed_final = KatelloAttachSubscription::Utils.merge_subs(parsed_final, parsed, layer_command)
       if layer_command == 'stop_parsing'
