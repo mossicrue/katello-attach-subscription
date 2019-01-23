@@ -4,6 +4,7 @@ module KatelloAttachSubscription
       valid = true
       valid = false unless self.match_hostname(config['hostname'], host['name'])
       valid = false unless self.match_type(config['type'], host['type'])
+      puts "DEBUGGONE: valid: #{valid}"
       host_facts = host['facts'] || {}
       config.fetch('match', []).each do |match|
         matcher = match['matcher'] || 'string'
@@ -42,6 +43,9 @@ module KatelloAttachSubscription
     def self.match_regexp(expected, actual)
       return true if expected.nil?
       return false if actual.nil?
+      puts "DEBUGGONE: expected #{expected}"
+      puts "DEBUGGONE:   actual #{actual}"
+      puts "DEBUGGONE:   result #{!!Regexp.new(expected).match(actual)}"
       !!Regexp.new(expected).match(actual)
     end
 
