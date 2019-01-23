@@ -60,5 +60,7 @@ class HostMatcherTest < Minitest::Test
     host = read_json_fixture('rhel_kvm_vm_host')
     refute KatelloAttachSubscription::HostMatcher.match_host(host, DUMMY_CONFIG)
   end
-end
+
 =end
+
+end
