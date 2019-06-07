@@ -1,18 +1,20 @@
 # katello-attach-subscription
 
-automatically assign subscriptions to hypervisors based on certain rules
+automatically assign subscriptions to registered content-host on Satellite based on certain rules
 
 ## Description
 
-`katello-attach-subscription` can be used to attach specific subscriptions to Katello hosts in Satellite 6. It is needed when you have multiple subscriptions that can be given to your hypervisors but want a more granular assignment than done by default by Satellite 6. You could for example give a specific subscription to a set of hosts that match a common hostname pattern or were submitted by a specific `virt-who` instance.
+`katello-attach-subscription` can be used to attach specific subscriptions to registered content-hosts in Satellite 6. It is needed when you have multiple subscriptions that can be given to your hosts but want a more granular assignment than done by default by Satellite 6. You could for example give a specific subscription to a set of hosts that match a common hostname pattern, submitted by a specific `virt-who` instance or matching a particular set of facts.
 
 When run, `katello-attach-subscription` will execute the following steps:
 
-* Iterate over all content hosts of type `Hypervisor` of your organization
-* Search for a subscription that matches by hostname and (optionally) by the submitter (usually identified by the UUID of the `virt-who` instance)
-* If such a subscription is found:
-    * ensure that it is attached to the content host
-    * and all other subscriptions are removed from it
+* Parsing the subscriptions present in the yaml file
+* Check the cluster status of the hypervisors, if requested
+* Iterate over all the content hosts or the ones founded by the query requested
+* Search for the subscriptions set that matches the rules of all the `:subs` entry in configuration file
+* If a set of subscriptions is found:
+    * ensure that all of them are attached to the content host
+    * remove all the other that aren't expected from it
 
 ## Requirements
 
@@ -22,15 +24,21 @@ When run, `katello-attach-subscription` will execute the following steps:
 ## Options
 
 * `-U`, `--uri=URI` URI to the Satellite, this must be https
+* `-t`, `--timeout=TIMEOUT` Timeout for any API calls.
 * `-u`, `--user=USER` User to log in to Satellite
 * `-p`, `--pass=PASS` Password to log in to Satellite
 * `-o`, `--organization-id=ID` ID of the Organization
 * `-c`, `--config=FILE` configuration in YAML format
 * `-n`, `--noop` do not actually execute anything
-* `-H`, `--used-hypervisors-only` only search for hypervisors that are in use
-* `-s`, `--search=SEARCH` only search for hypervisors that are in use
-* `--use-cache` read systems from the cache
+* `-s`, `--search=SEARCH` search for hosts matching this string only
+* `--read-from-cache` use, if possible, cache file for subscriptions and hosts
 * `--cache-file=FILE` set the cache file for reading and writing
+* `--virt-who` run the command `virt-who --print` to retrieve hypervisor facts from virt-who data
+* `--virt-who-file=FILE` set the cache file for reading and writing virt-who cache file
+* `--empty-hypervisor` remove all the subscriptions from the hypervisors with no guests before assigning subs
+* `--check-density` evaluate cluster data and set them as hypervisors facts. Print the cluster report in a file
+* `--check-density-value=VALUE` set the custom value that will says if a cluster is "full" or "empty"
+* `--check-density-file=FILE` set a custom name where print the cluster report.
 * `-d`, `--debug` show debug code during execution
 
 ## Configuration

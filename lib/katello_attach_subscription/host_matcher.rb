@@ -43,7 +43,7 @@ module KatelloAttachSubscription
     def self.match_regexp(expected, actual)
       return true if expected.nil?
       return false if actual.nil?
-      !!Regexp.new(expected).match(actual)
+      !!Regexp.new(expected, Regexp::IGNORECASE).match(actual)
     end
 
     def self.match_version(expected, actual)
@@ -52,6 +52,10 @@ module KatelloAttachSubscription
       requirement = Gem::Requirement.new(expected)
       version = Gem::Version.new(actual)
       requirement.satisfied_by?(version)
+    end
+
+    def self.skip_sub?(host, sub, options = {})
+      !self.match_host(host, sub)
     end
   end
 end
