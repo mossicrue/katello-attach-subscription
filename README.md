@@ -38,14 +38,23 @@ When run, `katello-attach-subscription` will execute the following steps:
 * `--empty-hypervisor` remove all the subscriptions from the hypervisors with no guests before assigning subs
 * `--check-density` evaluate cluster data and set them as hypervisors facts. Print the cluster report in a file
 * `--check-density-value=VALUE` set the custom value that will says if a cluster is "full" or "empty"
-* `--check-density-file=FILE` set a custom name where print the cluster report.
+* `--check-density-file=FILE` set a custom name where the cluster report would be printed.
+* `--print-subscription-report` print a report for the subscription used by the checked hosts
+* `--print-subscription-report-file=FILE` set a custom name for the file where subscription report would be printed.
+* `--multiple-search` allow to search content-hosts with the result of the query written in the yaml configuration file
+* `--clean-same-product` ensure that all the content hosts has 1 subscriptions for every listed product in the rules present in the yaml
+* `--repeat-API` allow to repeat API call for a certain number of time before fail
+* `--max-step=MAX_STEP` set the max number of time a specific API call has to be repeated in case of fails
+* `--repeat-API-sleep` add an incremental waiting time that is customizzable on yaml configuration file
+* `--concurren-mode` allow to run the code that assign subscription to every hosts in a concurrency way
+* `-v`, `--verbose` show verbose output during the execution
 * `-d`, `--debug` show debug code during execution
 
 ## Configuration
 
 `katello-attach-subscription` can be configured using an YAML file (`katello-attach-subscription.yaml` by default).
 
-The configuration file consists of two main sections: `settings` and `subs`.
+The configuration file consists of two mandatory sections: `settings` and `subs` and three optional sections: `search`, `sleep` and `variables`
 
 The `settings` section allows to set the same details as the commandline options. Any options given on the command line will override the respective config file settings.
 
@@ -55,12 +64,28 @@ The `settings` section allows to set the same details as the commandline options
       :uri: https://localhost
       :org: 1
       :cachefile: 'katello-attach-subscription.cache'
+      :verbose: true
+      :virtwho: false
 
 The `cachefile` is meant to run this program in a faster way because retrieving all of the systems can require huge time.
 The `cachefile` will be written each time, while if `--use-cache` is specified on command line it will be readed and will skip systems extraction.
 
-The `subs` section is an array of hashes which describe the subscriptions to be attached.
-Each subscription hash has an `hostname` entry which will be used as an regular expression to match the hostname of the content host in Katello.
+The `subs` section is an array of hashes which describe the subscriptions to be checked on the hosts.
+Each subscription hash has a set of tests that a hosts had to pass:
+* `hostname` is a mandatory entry that will be used as an regular expression to match the hostname of the content host in Katello.
+* `type` is an optional entry that will be used to check if a hosts is an hypervisor, a physical server or a virtual one.
+* `sub_layer` is an optional entry that will tell to kas what to do with the remaining rules after the hosts match for the first time. The possible values are:
+  * `stop_parsing` if the hosts match the rules, the script will stop checking the remaining rules. Default value if not specified.
+  * `keep_parsing` if the hosts match the rules, the script will continue checking the remaining rules, merging all the subscriptions the hosts will need.
+  * `override` if the hosts match the rules, the previous fetched subscriptions would be replaced by the founded one. This value works as `keep_parsing`
+* `facts` is an optional entry which contain an array of hashes that describe customizable tests for any content hosts facts. It is made up of three value that describe how to made the various tests.
+  * `name` is the name of the facts that has to be checked
+  * `value` is the value of the facts that has to be checked
+  * `matcher` is the type of match that has to be done. The current match are:
+    * `string` is a simple equal test from the hosts facts value and the value passed in yaml. Default value if not setted
+    * `regex` check if the content hosts value match the regex created from the content of `value`
+    * `vercmp` check if the hosts fact value pass the version comparsion specified in `value`
+     
 It also has a `sub` entry, which is an hash of array.
 The hash has product as key, which is a string to identify the type of subscription, and the content is an array of RedHat Pool ID of subscription to be attached to the host.
 
@@ -88,6 +113,8 @@ The hash has product as key, which is a string to identify the type of subscript
           rhel:
             - b9548e4c9fa20b85f264fbaa2470b726
 
+
+The `search` section could be an array of string or an array of hashes
 
 ## Permissions
 
