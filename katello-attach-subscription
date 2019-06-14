@@ -246,9 +246,6 @@ end
 # binding api
 @api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]}, {:verify_ssl => @options[:verify_ssl]})
 
-# error passed trough api call
-# api_error = false
-
 # availability of virt-who data after cache parsing or virt-who --print running
 @virtwho_data = false
 
@@ -1010,6 +1007,9 @@ def assignsubs(system)
 
   if skip_host
     puts_verbose "Skipping #{system['name']} as host doesn't need nothing more to do."
+    if system_type == KatelloAttachSubscription::FactAnalyzer::HYPERVISOR
+      subscribe_guest(system['name'])
+    end
     return
   end
 
