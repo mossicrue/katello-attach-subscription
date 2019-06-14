@@ -247,7 +247,7 @@ end
 @api = ApipieBindings::API.new({:uri => @options[:uri], :username => @options[:user], :password => @options[:pass], :api_version => '2', :timeout => @options[:timeout]}, {:verify_ssl => @options[:verify_ssl]})
 
 # error passed trough api call
-@api_error = false
+# api_error = false
 
 # availability of virt-who data after cache parsing or virt-who --print running
 @virtwho_data = false
@@ -342,7 +342,7 @@ def checksubs()
             puts_verbose "      parsing subscription '#{subscription_item}'"
             # fetch all the result searching subscription by their name, stored in subscription_item
             search_options = KatelloAttachSubscription::Utils.search_args(subscription_item)
-            parsed_subscription = fetch_all_results(:subscriptions,:index,{:search => search_options, :available_for => "host"})
+            parsed_subscription = fetch_all_results(:subscriptions, :index, {:search => search_options, :available_for => "host"})
             # if the lookup has given no results at all, no subscriptions has to be added
             if parsed_subscription.empty?
               puts_standard "      Subscription parsing results of search string '#{subscription_item}' is empty, not adding any subscription"
@@ -483,8 +483,9 @@ def checksubs()
     hypervisors_list.each_with_index do |system, currentcount|
       puts_verbose "Current hypervisor #{currentcount+1}/#{hypervisors_list.count}: #{system['name']} (#{system['id']})"
       # retrieve full data for every hypervisor found
-      sys = apiCall(:hosts, :show, { :id => system['id'], :fields => 'full' }, false)
-      if @api_error
+      api_error = false
+      sys, api_error = apiCall(:hosts, :show, { :id => system['id'], :fields => 'full' }, false)
+      if api_error
         puts_error "  ERROR: Hypervisor '#{system['name']}' not found. Skipping"
         next
       end
@@ -728,6 +729,8 @@ def subsupdate()
 
   puts_standard "Starting host subscription assignment"
 
+  STDERR.puts "Start Sub Time: #{Time.now}"
+
   if not @options[:concurrency]
     subscribe_hosts(systems)
   else
@@ -736,8 +739,10 @@ def subsupdate()
     systems.each do |thread_name, thread_hosts|
       threads_list.push( Thread.new {subscribe_hosts(thread_hosts, thread_name)} )
     end
-    threads_list.each { |thr| thr.join }
+    threads_list.each { |thr| thr.join; @current_thread -= 1 }
   end
+
+  STDERR.puts "  End Sub Time: #{Time.now}"
 
   # writing report of subscription usage counted by the script
   if @options[:subreport]
@@ -807,8 +812,9 @@ def assignsubs(system)
 
   # get detail for the current system to be checked.
   puts_debug("detail of the current system to be checked:", system)
-  sys = apiCall(:hosts, :show, {:id => system['id'].to_i, :fields => 'full'}, false)
-  if @api_error
+  api_error = false
+  sys, api_error = apiCall(:hosts, :show, {:id => system['id'].to_i, :fields => 'full'}, false)
+  if api_error
     puts_error "   ERROR: Host #{system['name']} full api data not found. Skipping."
     # next
     return
@@ -888,8 +894,9 @@ def assignsubs(system)
       # if so, fetch the stack-derived sub available for that host and replace the one in sub_parsing
       puts_verbose "System #{system['name']} is a Guest and desire stack-derived sub, search for it"
       subfiltertype = "STACK_DERIVED"
-      attached_sub_response = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system['id']}, false)
-      if @api_error
+      api_error = false
+      attached_sub_response, api_error = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system['id']}, false)
+      if api_error
         puts_standard "   ERROR: Unable to retrieve subscription data for host #{system['id']} #{system['name']}. Skipping to next host"
         next
       end
@@ -899,7 +906,7 @@ def assignsubs(system)
           has_derived_sub = true
         end
       end
-      attachable_subs = fetch_all_results(:subscriptions,:index,{:available_for => "host", :host_id => system['id']})
+      attachable_subs = fetch_all_results(:subscriptions, :index, {:available_for => "host", :host_id => system['id']})
       # if the lookup has given no results at all, no subscriptions has to be added
       if attachable_subs.empty?
         puts_standard "    Subscription parsing results of search string '#{subscription_item}' is empty, not adding any subscription"
@@ -1021,7 +1028,8 @@ def assignsubs(system)
     end
 
     if @options[:clean_sub]
-      cleanable_sub = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system['id'], :per_page => 100}, false )
+      api_error = false
+      cleanable_sub, api_error = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system['id'], :per_page => 100}, false )
       clean_same_product(desired_sub_hash, cleanable_sub["results"], system, system_type, sys_socket)
     end
 
@@ -1033,12 +1041,12 @@ def assignsubs(system)
       puts_debug "in the desired_sub_hash #{desidered_product_sub_array}"
       has_desired_sub = false
       # check the current associated subscription to this system
-      req = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system['id'], :per_page => 100}, false )
-      if @api_error
+      api_error = false
+      req, api_error = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system['id'], :per_page => 100}, false )
+      if api_error
         puts_standard "  WARNING: Subscription problem -- unable to retrieve subscription for host #{system['id']} #{system['name']}"
         next
       end
-
       # check a single subscription in the array
       req['results'].each do |sub|
         # check if the found cp_id is in the list of the current product, if it is, our job here is done
@@ -1083,13 +1091,17 @@ def assignsubs(system)
                 subscriptions_needed = total_subscriptions
                 if not @options[:noop]
                   puts_standard "  removed #{sub['id']} - #{sub['cp_id']}"
-                  apiCall(:host_subscriptions, :remove_subscriptions, {:host_id => system['id'], :subscriptions => [{:id => sub['id']}]}, false)
-                  if @api_error
+                  api_error = false
+                  dummy_result = nil
+                  dummy_result, api_error = apiCall(:host_subscriptions, :remove_subscriptions, {:host_id => system['id'], :subscriptions => [{:id => sub['id']}]}, false)
+                  if api_error
                     puts_error "WARNING: Unable to remove subscription #{sub['id']} from #{system['name']} - ID: #{system['id']}"
                   end
                   puts_standard "  reattached #{sub['id']} - #{sub['cp_id']}"
-                  apiCall(:host_subscriptions, :add_subscriptions, {:host_id => system['id'], :subscriptions => [{:id => sub['id'], :quantity => subscriptions_needed}]}, false)
-                  if @api_error
+                  api_error = false
+                  dummy_result = nil
+                  dummy_result, api_error = apiCall(:host_subscriptions, :add_subscriptions, {:host_id => system['id'], :subscriptions => [{:id => sub['id'], :quantity => subscriptions_needed}]}, false)
+                  if api_error
                     puts_error "WARNING: Unable to attach subscription #{sub['id']} to #{system['name']} - ID: #{system['id']}"
                   end
                 else
@@ -1109,8 +1121,10 @@ def assignsubs(system)
         elsif sub['cp_id'] != nil and not desired_sub_hash.flatten(2).include?(sub['cp_id']) and (remove_other or remove_subs.include?(sub['cp_id'])) and not (keep_virt_only and sub.has_key?('virt_only') and sub['virt_only']) and not keep_subs.include?(sub['cp_id']) and sub['type'] != "STACK_DERIVED"
           puts_standard "  removing subscription #{sub['cp_id']} from system #{system['name']}"
           if not @options[:noop]
-            apiCall(:host_subscriptions, :remove_subscriptions, {:host_id => system['id'], :subscriptions => [{:id => sub['id']}]}, false)
-            if @api_error
+            api_error = false
+            dummy_result = nil
+            dummy_result, api_error = apiCall(:host_subscriptions, :remove_subscriptions, {:host_id => system['id'], :subscriptions => [{:id => sub['id']}]}, false)
+            if api_error
               STERR.puts "WARNING: Unable to remove subscription #{sub['id']} from #{system['name']} - ID: #{system['id']}"
             else
               puts_standard "  removed"
@@ -1138,9 +1152,11 @@ def assignsubs(system)
         desired_subs_hash.each do |desired_sub|
           puts_debug "current subscription to be chekced", desired_sub
           # if subs[desired_sub] is false, retrieve the current subscription detail
-          subs[desired_sub] ||= apiCall(:subscriptions, :index, {:search => "id=#{desired_sub}", :organization_id => @options[:org]}, false)['results'][0]
-          if @api_error
+          response = fetch_all_results(:subscriptions, :index, {:search => "id=#{desired_sub}", :organization_id => @options[:org]})
+          subs[desired_sub] = response[0]
+          if not subs[desired_sub]
             puts_error "  ERROR: Unable to retrive subscription for #{desired_sub}"
+            next
           end
 
           desired_quantity = KatelloAttachSubscription::Utils.needed_entitlement(system_type, sys_socket, subs[desired_sub])
@@ -1182,8 +1198,10 @@ def assignsubs(system)
           subs[desired_sub]['consumed'] += desired_quantity
 
           if not @options[:noop]
-            apiCall(:host_subscriptions, :add_subscriptions, {:host_id => system['id'], :subscriptions => [{:id => subs[desired_sub]['id'], :quantity => desired_quantity}]}, false)
-            if @api_error
+            api_error = false
+            dummy_result = nil
+            dummy_result, api_error = apiCall(:host_subscriptions, :add_subscriptions, {:host_id => system['id'], :subscriptions => [{:id => subs[desired_sub]['id'], :quantity => desired_quantity}]}, false)
+            if api_error
               puts_error "  WARNING: Subscription problem -- unable to attach subscription for host #{system['id']} #{system['name']}"
             else
               puts_standard "    Added #{desired_sub} for #{product} in system #{system['name']}"
@@ -1291,30 +1309,37 @@ def subscribe_guest(hypervisor_name)
         chunk_guests = hypervisor_guests.each_slice(chunk_size).to_a
         guests_thread_list = []
         chunk_guests.each do |chunk_list|
+          @current_thread += 1
           guests_thread_list.push( Thread.new {subscribe_hosts(chunk_list)} )
         end
-        guests_thread_list.each { |thr| thr.join }
+        guests_thread_list.each { |thr| thr.join; @current_thread -= 1 }
         puts_debug "All guests of #{hypervisor_name} are checked"
       end
     end
+  else
+    puts_verbose "No guests on #{hypervisor_name}. Skipping its guests subscriptions"
   end
 end
 
 # remove all the subscriptions from a system
 def remove_all_subs(system)
-  attached_sub = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system['id'], }, false)
-  if @api_error
+  api_error = false
+  req, api_error = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system['id'], }, false)
+  if api_error
     puts_verbose "Can't retrieve subscriptions for #{system['id']}. Skipping removal of subs."
     return
   end
+  attached_sub = req["results"]
   if attached_sub.count <= 0
     puts_verbose "No subscriptions attached to #{system['name']}. Nothing to remove."
     return
   end
   attached_sub['results'].each do |subscription|
     if not @options[:noop]
-      apiCall(:host_subscriptions, :remove_subscriptions, {:host_id => system['id'], :subscriptions => [{:id => subscription['id']}]}, false )
-      if not @api_error
+      api_error = false
+      dummy_result = nil
+      dummy_result, api_error = apiCall(:host_subscriptions, :remove_subscriptions, {:host_id => system['id'], :subscriptions => [{:id => subscription['id']}]}, false )
+      if not api_error
         puts_standard "  removed subscription ID #{subscription['id']}"
       else
         puts_standard "  WARNING: Problem removing subscription ID #{subscription['id']} from host #{system['name']} - ID #{system['id']}"
@@ -1450,8 +1475,10 @@ def clean_same_product (desired_sub_hash, host_subscriptions, host, host_type, h
     p remove_subscription
     remove_subscription.each do |subscription|
       if not @options[:noop]
-        apiCall(:host_subscriptions, :remove_subscriptions, {:host_id => host['id'], :subscriptions => [{:id => subscription}]}, false )
-        if not @api_error
+        api_error = false
+        dummy_result = nil
+        dummy_result, api_error = apiCall(:host_subscriptions, :remove_subscriptions, {:host_id => host['id'], :subscriptions => [{:id => subscription}]}, false )
+        if not api_error
           puts_standard "  removed subscription ID #{subscription}"
         else
           puts_standard "  WARNING: Problem removing subscription ID #{subscription} from host #{host['name']} - ID #{host['id']}"
@@ -1539,8 +1566,9 @@ def addspecialsubtocount(system)
   system_id = system['id']
   attached_subscriptions = []
   # retrieve all the subscription attached
-  response = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system_id}, false)
-  if @api_error
+  api_error = false
+  response, api_error = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system_id}, false)
+  if api_error
     puts_error "   ERROR: Unknow Error -- Unable to retrieve subscription details for hypervisor #{system_id}"
   end
   # check if data found (API return data successfully)
@@ -1563,7 +1591,7 @@ def getsubdetailfor(sub_name)
   search_params = {"name" => sub_name}
   search_options = KatelloAttachSubscription::Utils.search_args(search_params)
   search_options = 'name="'+sub_name+'"'
-  parsed_subscription = fetch_all_results(:subscriptions,:index,{:search => search_options, :available_for => "host"})
+  parsed_subscription = fetch_all_results(:subscriptions, :index, {:search => search_options, :available_for => "host"})
   detail_hash["available"] = getavailablesubfor(parsed_subscription)
   detail_hash["consumed"] = getconsumedsubfor(parsed_subscription)
   detail_hash["free"] = getfreesubfor(parsed_subscription)
@@ -1709,8 +1737,9 @@ def fetch_all_results(resource, action, params)
     # increase page counter
     page += 1
     # get 100 results
+    api_error = false
     params.merge!({:organization_id => @options[:org], :page => page, :per_page => 100})
-    req = apiCall(resource, action, params, true)
+    req, api_error = apiCall(resource, action, params, true)
     # concatenate output - all of the results
     results.concat(req['results'])
   end
@@ -1722,17 +1751,17 @@ def apiCall(resource, action, params, exiting)
   if not @options[:repeatAPI]
     @options[:maxstep] = 1
   end
-  @api_error = true
+  api_error = true
   current_step = 0
   exceptions_list = []
   results = {}
   step = 0
-  while @api_error and step <= @options[:maxstep]
+  while api_error and step <= @options[:maxstep]
     begin
       results = @api.resource(resource).call(action, params)
-      @api_error = false
+      api_error = false
     rescue RestClient::ExceptionWithResponse => exception
-      @api_error = true
+      api_error = true
       step = step + 1
       exceptions_list.push({"time"=> Time.now, "step" => step, "message" => exception.message, "response" => exception.response })
       puts_debug "API #{resource} / #{action} failes for the #{step} time(s)."
@@ -1750,7 +1779,7 @@ def apiCall(resource, action, params, exiting)
     puts_standard "Exiting from program"
     exit 1
   end
-  return results
+  return results, api_error
 end
 
 # print the error of the API call if present
