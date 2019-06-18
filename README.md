@@ -43,10 +43,11 @@ When run, `katello-attach-subscription` will execute the following steps:
 * `--print-subscription-report-file=FILE` set a custom name for the file where subscription report would be printed.
 * `--multiple-search` allow to search content-hosts with the result of the query written in the yaml configuration file
 * `--clean-same-product` ensure that all the content hosts has 1 subscriptions for every listed product in the rules present in the yaml
+* `--host-auto-heal=VALUE` enable or disable hosts auto-heal process if VALUE is setted and different from noop
 * `--repeat-API` allow to repeat API call for a certain number of time before fail
 * `--max-step=MAX_STEP` set the max number of time a specific API call has to be repeated in case of fails
 * `--repeat-API-sleep` add an incremental waiting time that is customizzable on yaml configuration file
-* `--concurren-mode` allow to run the code that assign subscription to every hosts in a concurrency way
+* `--concurrency-mode` allow to run the code that assign subscription to every hosts in a concurrency way
 * `-v`, `--verbose` show verbose output during the execution
 * `-d`, `--debug` show debug code during execution
 
@@ -86,8 +87,8 @@ Each subscription hash has a set of tests that a hosts had to pass:
     * `regex` check if the content hosts value match the regex created from the content of `value`
     * `vercmp` check if the hosts fact value pass the version comparsion specified in `value`
      
-It also has a `sub` entry, which is an hash of array.
-The hash has product as key, which is a string to identify the type of subscription, and the content is an array of RedHat Pool ID of subscription to be attached to the host.
+It also has a `sub` entry, which is an hash of value that would be searched through API
+The hash has product as key, which is a string to identify the type of subscription, and the content is an array of query that found one or more contract of the subscriptions to be attached to the host.
 
     :subs:
       -
@@ -105,16 +106,40 @@ The hash has product as key, which is a string to identify the type of subscript
         hostname: esxi123\.example\.com
         sub:
           rhel:
-            - 4543828edcf35158c30abc3554c1e36a
+            - name: "Red Hat Enterprise Linux, Premium (Physical or Virtual Nodes)
+        facts:
+          - name: "virt::host_type"
+          - value: "rhev|kvm|vmare"
+          - matcher: "regex"
+      
       -
-        hostname: machine01\.example.com
-        type: System
+        hostname: .*
+        sub_layer: "keep_parsing"
         sub:
           rhel:
-            - b9548e4c9fa20b85f264fbaa2470b726
+            - 4543828edcf35158c30abc3554c1e36a
+        facts:
+          - name: "cpu::cpu_socket(s)"
+          - value: ">3"
+          - matcher: "vercmp"
 
+The `search` section could be an array of string or an array of hashes.
 
-The `search` section could be an array of string or an array of hashes
+If using an array of string the use of concurrency it's not supported
+
+    :search:
+      - "hypervisor = true"
+      - "name ~ nicehost0%.example.org"
+
+Instead, if is used an array of hashes, it can be prompt to `katello-attach-subscription` which query is dedicated to which thread.
+
+    :search:
+      - 
+        query: "hypervisor = true"
+        thread: "A"
+      -
+        query: "name ~ nicehost0%.example.org"
+        thread: "B"
 
 ## Permissions
 
@@ -124,6 +149,7 @@ The following permissions are required to run `katello-attach-subscription`:
 |----------|-------------|
 | Fact Value | view_facts|
 | Host | view_hosts, edit_hosts|
+| Organization | view_organizations|
 | Subscription | view_subscriptions, attach_subscriptions, unattach_subscriptions|
 
 
