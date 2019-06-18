@@ -65,7 +65,8 @@ $stdout.sync = true
   :sleepMult              => 1,
   :multisearch            => false,
   :clean_sub              => false,
-  :maxthread              => 2
+  :maxthread              => 2,
+  :auto_heal              => "noop"
 }
 
 @options = {
@@ -143,6 +144,14 @@ optparse = OptionParser.new do |opts|
 
   opts.on("--clean-same-product", "Ensure that all the content hosts has 1 subscriptions for every product found from yaml configuration file") do
     @options[:clean_sub] = true
+  end
+
+  opts.on("--host-auto-heal=VALUE", "Disable or enable auto-attach process on Satellite content hosts (Accepted value: 'Enable' or 'Disable')") do |setting|
+    if setting.downcase == "enable" or setting.downcase == "disable"
+      @options[:auto_heal] = setting.downcase
+    else
+      @options[:auto_heal] = "noop"
+    end
   end
 
   opts.on("--repeat-API", "Allow to repeat API for a certain number before fail") do
@@ -827,6 +836,25 @@ def assignsubs(system)
     puts_verbose "Skipping #{sys['name']} as it isn't registered with subscription manager"
     # next
     return
+  end
+
+  # if requested, enable or disable the auto-heal process on the host:
+  # if available, the hosts attach subscriptions that cover installed products
+  # if the options is different from "noop" act
+  if @options[:auto_heal] != "noop"
+    # autoheal setted to false, if the option is setted to enable set to true
+    autoheal_value = false
+    if @options[:auto_heal] == "enable"
+      autoheal_value = true
+    end
+    # params taken by satellite apidoc: :id => which hosts, :hosts hash of the api data to update
+    params = {:id => system["id"], :host => {:subscription_facet_attributes => {:autoheal => autoheal_value} } }
+    if @options[:noop]
+      puts_standard "#{@options[:auto_heal]} auto-heal for #{system["name"]}"
+      apiCall(:hosts, :update, params, false)
+    else
+      puts_standard "[noop]: #{@options[:auto_heal]} auto-heal for #{system["name"]}"
+    end
   end
 
   if @options[:virtwho] and @virtwho_data
