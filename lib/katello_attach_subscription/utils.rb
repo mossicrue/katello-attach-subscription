@@ -70,7 +70,7 @@ module KatelloAttachSubscription
       if socket_limit == "NO_LIMIT"
         return instance_multiplier
       end
-      total_subscriptions = instance_multiplier * (host_socket.to_f/host_socket.to_f).ceil
+      total_subscriptions = instance_multiplier * (host_socket.to_f/socket_limit.to_f).ceil
       return total_subscriptions
     end
   end

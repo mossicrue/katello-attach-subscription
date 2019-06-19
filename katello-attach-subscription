@@ -146,7 +146,7 @@ optparse = OptionParser.new do |opts|
     @options[:clean_sub] = true
   end
 
-  opts.on("--host-auto-heal=VALUE", "Disable or enable auto-attach process on Satellite content hosts (Accepted value: 'Enable' or 'Disable')") do |setting|
+  opts.on("--host-auto-heal=VALUE", "Disable or enable auto-attach process on Satellite content hosts (Accepted value: 'noop' 'Enable' or 'Disable')") do |setting|
     if setting.downcase == "enable" or setting.downcase == "disable"
       @options[:auto_heal] = setting.downcase
     else
@@ -1253,11 +1253,10 @@ def assignsubs(system)
           if not sub_attached
             # set as missing the first desired_subs entry
             sub_missing = desired_subs_hash.first
-            puts_verbose "#{system['name']} didn't attach any #{product} sub, set that need #{sub_missing}"
             missing_hash = subs[sub_missing]
             sub_socket = missing_hash['sockets']
-
             desired_quantity = KatelloAttachSubscription::Utils.needed_entitlement(system_type, sys_socket, missing_hash)
+            puts_verbose "#{system['name']} didn't attach any #{product} sub, set that need #{sub_missing}"
             addtototalsubneeded(system['name'], missing_hash['name'], desired_quantity)
             skip_report = true
           end
@@ -1352,13 +1351,12 @@ end
 # remove all the subscriptions from a system
 def remove_all_subs(system)
   api_error = false
-  req, api_error = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system['id'], }, false)
+  attached_sub, api_error = apiCall(:host_subscriptions, :index, {:organization_id => @options[:org], :host_id => system['id'], }, false)
   if api_error
     puts_verbose "Can't retrieve subscriptions for #{system['id']}. Skipping removal of subs."
     return
   end
-  attached_sub = req["results"]
-  if attached_sub.count <= 0
+  if attached_sub["result"].count <= 0
     puts_verbose "No subscriptions attached to #{system['name']}. Nothing to remove."
     return
   end
@@ -1449,9 +1447,9 @@ def printguestreport()
   puts_verbose "Printing guest report in #{@options[:guestreportfile]}"
   CSV.open(@options[:guestreportfile], "wb", {:col_sep => ";"}) do |csv|
     # header of csv
-    csv << ["Guest Name","Host Name","Cluster Name", "Operative System"]
+    csv << ["Cluster Name", "Hypervisor Name", "Guest Name", "Operative System"]
     @guest_list.each do |guest_data|
-      csv << [guest_data['name'], guest_data['host'], guest_data['cluster'], guest_data['operating_system']]
+      csv << [guest_data['cluster'], guest_data['host'], guest_data['name'], guest_data['operating_system']]
     end
   end
 end
