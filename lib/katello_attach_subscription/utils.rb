@@ -5,13 +5,16 @@ module KatelloAttachSubscription
     # full explanation of the bug and workaround searching for "I[underscore]MW"
     # list of the sub that has instance_multiplier that had to be 2
     EXCEPTION_SUB = [
-      "Red Hat Enterprise Linux Server, Standard (Physical or Virtual Nodes)",
-      "Red Hat Enterprise Linux Server, Premium (Physical or Virtual Nodes)",
-      "Red Hat Enterprise Linux Extended Life Cycle Support (Physical or Virtual Nodes)",
-      "Smart Management",
-      "Resilient Storage",
-      "High Availability"
-    ].freeze
+     "Red Hat Enterprise Linux Server, Standard (Physical or Virtual Nodes)",
+     "Red Hat Enterprise Linux Server, Premium (Physical or Virtual Nodes)",
+     "Smart Management",
+     "Red Hat Enterprise Linux Extended Life Cycle Support (Physical or Virtual Nodes)",
+     "Resilient Storage",
+     "High Availability",
+     "Red Hat Gluster Storage, Standard (1 Physical or Virtual Node)",
+     "Red Hat Gluster Storage, Premium (1 Physical or Virtual Node)",
+     "90 Day Red Hat Enterprise Linux Server Supported Evaluation with Smart Management, Monitoring and all Add-Ons"
+   ].freeze
 
     def self.search_args(search)
       if search.is_a?(String)
