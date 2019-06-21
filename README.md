@@ -86,7 +86,7 @@ Each subscription hash has a set of tests that a hosts had to pass:
     * `string` is a simple equal test from the hosts facts value and the value passed in yaml. Default value if not setted
     * `regex` check if the content hosts value match the regex created from the content of `value`
     * `vercmp` check if the hosts fact value pass the version comparsion specified in `value`
-     
+
 It also has a `sub` entry, which is an hash of value that would be searched through API
 The hash has product as key, which is a string to identify the type of subscription, and the content is an array of query that found one or more contract of the subscriptions to be attached to the host.
 
@@ -111,7 +111,7 @@ The hash has product as key, which is a string to identify the type of subscript
           - name: "virt::host_type"
           - value: "rhev|kvm|vmare"
           - matcher: "regex"
-      
+
       -
         hostname: .*
         sub_layer: "keep_parsing"
@@ -134,7 +134,7 @@ If using an array of string the use of concurrency it's not supported
 Instead, if is used an array of hashes, it can be prompt to `katello-attach-subscription` which query is dedicated to which thread.
 
     :search:
-      - 
+      -
         query: "hypervisor = true"
         thread: "A"
       -
@@ -182,21 +182,34 @@ The correct value is retrieved by calling ```GET /katello/api/organizations/:org
 :host_id = <the id of the host we need to attach>
 ```
 
-Tests that were made using various type of subscriptions and return that:
+or opening the **Subscription** page of one of the your listed products in the **Subscription Summary** of the **Access Portal of RedHat**.
+If the value of **Instance Based** is **YES**, the subscriptions will have an **Instance Multiplier** of **2**, otherwise it would be of **1**.
+
+The checked subscriptions are divided in these list as from result:
 
 **A.** These subs has 1 as `instance_multiplier`
 
-  - VDC Subs (VDC RHEL, VDC ESL and VDC Smart Management) that would be attached on an Hypervisor
-  - VDC Subs that would be attached on a virtual server that is on Fully Entitled Hypervisor
-  - Self-support subscriptions for physical or virtual nodes as *"Red Hat Enterprise Linux Server Entry Level, Self-support"*, *"Red Hat Enterprise Linux Server for HPC Compute Node, Self-support (1-2 sockets) (Up to 1 guest)"* and *"Smart Management for Red Hat Enterprise Linux Server for HPC Compute Node (Up to 1 guest)"*
+  - Virtual Datacenter Subscription that would be attached on an Hypervisor as:
+    - *"Red Hat Enterprise Linux for Virtual Datacenters, Premium"*
+    - *"Red Hat Enterprise Linux for Virtual Datacenters, Standard"*
+    - *"Red Hat Enterprise Linux Extended Life Cycle Support (Unlimited Guests)"*
+    - *"Smart Management for Unlimited Guests"*
+  - Self-support subscriptions for physical or virtual nodes as
+    - *"Red Hat Enterprise Linux Server Entry Level, Self-support"*,
+    - *"Red Hat Enterprise Linux Server for HPC Compute Node, Self-support (1-2 sockets) (Up to 1 guest)"*
+    - *"Smart Management for Red Hat Enterprise Linux Server for HPC Compute Node (Up to 1 guest)"*
 
 **B.** These subs has 2 as `instance_multiplier`:
 
 - *"Red Hat Enterprise Linux Server, Standard (Physical or Virtual Nodes)"*
 - *"Red Hat Enterprise Linux Server, Premium (Physical or Virtual Nodes)"*
-- *"Smart Management"*
 - *"Red Hat Enterprise Linux Extended Life Cycle Support (Physical or Virtual Nodes)"*
-
+- *"Red Hat Gluster Storage, Standard (1 Physical or Virtual Node)"*
+- *"Red Hat Gluster Storage, Premium (1 Physical or Virtual Node)"*
+- *"Resilient Storage"
+- *"High Availability"
+- *"Smart Management"*
+- *"90 Day Red Hat Enterprise Linux Server Supported Evaluation with Smart Management, Monitoring and all Add-Ons"
 
 The workaorund code simply checks if the host is **Physical** and need to attach one of the subscriptions in the B list, as only Physical servers may need instance_multiplier **2**.
 **Hypervisor**'s subscriptions has `instance_multiplier` set to **1** and Virtual Guest need only **1** sub (fixed value)
