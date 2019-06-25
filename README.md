@@ -1,6 +1,7 @@
 # katello-attach-subscription
 
 automatically assign subscriptions to registered content-host on Satellite based on certain rules
+experimental branch, not so stable but daily updated.
 
 ## Description
 
