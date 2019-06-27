@@ -1,6 +1,6 @@
 # katello-attach-subscription
 
-automatically assign subscriptions to registered content-host on Satellite based on certain rules
+automatically assign subscriptions to registered content-host on Satellite based on certain rules.
 experimental branch, not so stable but daily updated.
 
 ## Description
@@ -51,6 +51,55 @@ When run, `katello-attach-subscription` will execute the following steps:
 * `--concurrency-mode` allow to run the code that assign subscription to every hosts in a concurrency way
 * `-v`, `--verbose` show verbose output during the execution
 * `-d`, `--debug` show debug code during execution
+
+Some option descriptions wrote before aren't enough to explain how they work as they are a little complex.
+
+### --check-density
+
+With this options enabled, katello-attach-subscriopt will search for all the hypervisors registered on Satellite and group them by cluster, calculating for each cluster:
+
+- Number of virtual guests
+- Number of virtual guests with ELS OS
+- Number of hypervisors
+- Number of socket in the cluster
+- Ratio of `the number of virtual guests of a cluster` divided by `the number of socket of a cluster divided by 2`
+- Ratio of `the number of virtual guests with ELS OS of a cluster` divided by `the number of socket of a cluster divided by 2`
+
+This data will be added in the `facts` dictionary of every fetched hypervisors during the assigning subscription phase.
+If the `--print-subscription-report` option is enabled there will be generated 2 CSV report, `cluster-state.csv` and `guest-report.csv`, containing all the data calculated before.
+
+### --print-subscription-report
+
+With this options enabled, katello-attach-subscription will generate some csv file that report data
+
+- `cluster-state.csv` that contain a table with listed all the data gathered from the `--check-density` option
+- `guest-report.csv` that contain a table that list, for every virtual guest, its name, the operative system, the hypervisor in which reside and the cluster in which reside the hypervisor
+- `sub-report.csv` that show the entitlments and subscriptions expected and actual utilization for every subscriptions
+- `detailed-report.csv` that show for every content-host which are the expected subscriptions with their expected used entitlment
+
+Example of `sub-report.csv`
+
+| Subscription Name | Expected Entitlement | Entitlement Available | Entitlement Consumed | Entitlement Free | State |
+|-|-|-|-|-|-|
+| Red Hat Enterprise Linux Server, Premium (Physical or Virtual Nodes) | 50 | 60 | 50 | 10 | OK |
+| Red Hat Enterprise Linux for Virtual Datacenters, Premium | 20 | 10 | 10 | 0 | ERROR |
+
+| Subscription Name | Instance Multiplier | Expected Subscription | Subscription Available | Subscription Consumed | Subscription Free | State |
+|-|-|-|-|-|-|-|
+| Red Hat Enterprise Linux Server, Premium (Physical or Virtual Nodes) | 2 | 25 | 30 | 25 | 5 | OK |
+| Red Hat Enterprise Linux for Virtual Datacenters, Premium | 1 | 20 | 10 | 10 | 0 | ERROR |
+
+### --host-auto-heal=VALUE
+
+With this option enabled, `katello-attach-subscription` will manage the auto-heal process of every registered content-host.
+The accepted value are currently 3:
+
+- `noop` that will not change the current status of the auto-heal process of the content hosts
+- `enable` that will enable the auto-heal process of the content hosts
+- `disable` that will disable the auto-heal process of the content hosts
+
+The auto-heal process of one content host ensure that the server has attached the subscriptions needed to cover the installed products.
+If a server has a valid subscription status this process will don't do anything, instead, if a server has an invalid status it will search if there are any needed subscriptions available and attach it to the content host.
 
 ## Configuration
 
@@ -153,7 +202,6 @@ The following permissions are required to run `katello-attach-subscription`:
 | Organization | view_organizations|
 | Subscription | view_subscriptions, attach_subscriptions, unattach_subscriptions|
 
-
 ## Caveats
 
 Currently Satellite is not able to save fact that contain the socket number. Candlepin 2.0 (bug to be linked) and `Virt-who` 0.16 are needed `https://bugzilla.redhat.com/show_bug.cgi?id=1307024`.
@@ -207,10 +255,10 @@ The checked subscriptions are divided in these list as from result:
 - *"Red Hat Enterprise Linux Extended Life Cycle Support (Physical or Virtual Nodes)"*
 - *"Red Hat Gluster Storage, Standard (1 Physical or Virtual Node)"*
 - *"Red Hat Gluster Storage, Premium (1 Physical or Virtual Node)"*
-- *"Resilient Storage"
-- *"High Availability"
+- *"Resilient Storage"*
+- *"High Availability"*
 - *"Smart Management"*
-- *"90 Day Red Hat Enterprise Linux Server Supported Evaluation with Smart Management, Monitoring and all Add-Ons"
+- *"90 Day Red Hat Enterprise Linux Server Supported Evaluation with Smart Management, Monitoring and all Add-Ons"*
 
 The workaorund code simply checks if the host is **Physical** and need to attach one of the subscriptions in the B list, as only Physical servers may need instance_multiplier **2**.
 **Hypervisor**'s subscriptions has `instance_multiplier` set to **1** and Virtual Guest need only **1** sub (fixed value)
