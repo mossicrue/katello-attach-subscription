@@ -10,12 +10,22 @@ experimental branch, not so stable but daily updated.
 When run, `katello-attach-subscription` will execute the following steps:
 
 * Parsing the subscriptions present in the yaml file
-* Check the cluster status of the hypervisors, if requested
-* Iterate over all the content hosts or the ones founded by the query requested
-* Search for the subscriptions set that matches the rules of all the `:subs` entry in configuration file
+* Check the cluster status of the hypervisors, if requested, collecting data and printing reports
+* Remove the subscriptions from the hypervisors without any guests, if requested
+* Iterate and subscribe all the registered content hosts or the ones founded by the query passed in the configuration file
+
+The subscription part is also divided in more simple parts that are:
+
+* Attach all the facts data retrived by `--check-density` and `--virt-who options`, if present
+* Search all the set of subscriptions present in the matching rules in the `:subs` entry of the configuration file
 * If a set of subscriptions is found:
-    * ensure that all of them are attached to the content host
+    * ensure that all of them are attached to the content host and attach the missing subscription
     * remove all the other that aren't expected from it
+    * remove all the needed products that are attached as _dublicated_, eg 2 _"RHEL Premium"_ subscriptions when need 1
+* If the checked content host is an Hypervisor, `katello-attach-subscription` will:
+   * adding the guests of the hypervisor at the head of the hosts to subscribe
+   * subscribe the guests, to avoid a _long subscription blackout_
+   * return to the normal hosts queue
 
 ## Requirements
 
@@ -62,11 +72,16 @@ With this options enabled, katello-attach-subscriopt will search for all the hyp
 - Number of virtual guests with ELS OS
 - Number of hypervisors
 - Number of socket in the cluster
-- Ratio of `the number of virtual guests of a cluster` divided by `the number of socket of a cluster divided by 2`
-- Ratio of `the number of virtual guests with ELS OS of a cluster` divided by `the number of socket of a cluster divided by 2`
+- VDCRatio, obtained by dividing `the number of virtual guests of a cluster` by `the number of socket of a cluster divided by 2`
+- ELSRatio, obtained by dividing `the number of virtual guests with ELS OS of a cluster` by `the number of socket of a cluster divided by 2`
 
 This data will be added in the `facts` dictionary of every fetched hypervisors during the assigning subscription phase.
 If the `--print-subscription-report` option is enabled there will be generated 2 CSV report, `cluster-state.csv` and `guest-report.csv`, containing all the data calculated before.
+
+For check density options, in the configuration yaml are needed 2 variables:
+
+- `:densityvalue` that set the border value of the VDCRatio: if the calculated `vdcratio` is >= of `:densityvalue` the cluster is in a good state for what is regarding the number of guests present in the cluster, otherwise is in a bad state.
+- `:elsdensityvalue` that set the border value of the ELSRatio: if the calculated `elsratio` is >= of `:elsdensityvalue` the cluster is in a good state for what is regarding the number of guests with ELS OS, otherwise is in a bad state.
 
 ### --print-subscription-report
 
@@ -100,6 +115,22 @@ The accepted value are currently 3:
 
 The auto-heal process of one content host ensure that the server has attached the subscriptions needed to cover the installed products.
 If a server has a valid subscription status this process will don't do anything, instead, if a server has an invalid status it will search if there are any needed subscriptions available and attach it to the content host.
+
+### --concurrency
+
+With this option enabled, `katello-attach-subscription` will manage some parts of the code to run in _parallel_, reducing the execution time of it. The majors reasons that need this function are 2:
+
+- Avoid that the script run for too much hours in a big environment
+- Avoid that the [BZ 1667647](https://bugzilla.redhat.com/show_bug.cgi?id=1667647) impact too much.
+
+The mandatory option to add in the `:settings` part of the configuration file is `:maxthread` value, it will set the maximum number of concurrent thread that will run at the same time.
+
+The part of the code that will run in parallel are the hosts subscription part and the hypervisor's guests subscription part.
+The first part will spawn as much threads as the one requested in the `:search` part of the configuration yaml.
+If the number of requested thread are greater of the `:maxthread` value, the program will exit with error.
+
+In the second part, after the hypervisor is subscribed, `katello-attach-subscription` will spawn the highest possible number of threads, dividing the guests list in _chunk_ of regular size.
+Eg: 6 available threads that can be spawn, hypervisor with 30 guests: `katello-attach-subscription` will spawn 6 threads that will subscribe 5 guests for every thread.
 
 ## Configuration
 
