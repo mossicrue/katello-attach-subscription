@@ -1201,10 +1201,6 @@ def assignsubs(system)
         # cycle for each subscription
         desired_subs_hash.each do |desired_sub|
           puts_debug "current subscription to be chekced", desired_sub
-          # if kas run with concurrency, lock the subscription resource
-          if @options[:concurrency]
-            lock_subscription(subs[desired_sub])
-          end
           # if subs[desired_sub] is false, retrieve the current subscription detail
           response = fetch_all_results(:subscriptions, :index, {:search => "id=#{desired_sub}", :organization_id => @options[:org]})
           subs[desired_sub] = response[0]
@@ -1212,6 +1208,12 @@ def assignsubs(system)
             puts_error "  ERROR: Unable to retrive subscription for #{desired_sub}"
             next
           end
+          # if kas run with concurrency, lock the subscription resource
+          if @options[:concurrency]
+            lock_subscription(subs[desired_sub])
+          end
+          response = fetch_all_results(:subscriptions, :index, {:search => "id=#{desired_sub}", :organization_id => @options[:org]})
+          subs[desired_sub] = response[0]
           # calculate the desired quantity of entitlment to be attached
           desired_quantity = KatelloAttachSubscription::Utils.needed_entitlement(system_type, sys_socket, subs[desired_sub])
           puts_standard "   The number of subscriptions needed for #{desired_sub} (id: #{subs[desired_sub]['id']}) is of #{desired_quantity}"
