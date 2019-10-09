@@ -75,7 +75,16 @@ With this options enabled, katello-attach-subscriopt will search for all the hyp
 - VDCRatio, obtained by dividing `the number of virtual guests of a cluster` by `the number of socket of a cluster divided by 2`
 - ELSRatio, obtained by dividing `the number of virtual guests with ELS OS of a cluster` by `the number of socket of a cluster divided by 2`
 
-This data will be added in the `facts` dictionary of every fetched hypervisors during the assigning subscription phase.
+This data will be added in the `facts` dictionary of every fetched hypervisors during the assigning subscription phase with this schema and can be used in yaml configuration file as facts matcher rules
+
+- `cluster_data::cluster_name`: name of the cluster
+- `cluster_data::cluster_socket`: total number of socket in a cluster
+- `cluster_data::cluster_hosts`: total number of hypervisor in a cluster
+- `cluster_data::cluster_guests`: total number of virtual guests in a cluster
+- `cluster_data::cluster_els_guests`: total number of virtual guests with an operative system that may need an ELS subscription
+- `cluster_data::cluster_ratio`: VDCRatio, see explanation above
+- `cluster_data::cluster_els_ratio`: ELSRatio, see explanation above
+
 If the `--print-subscription-report` option is enabled there will be generated 2 CSV report, `cluster-state.csv` and `guest-report.csv`, containing all the data calculated before.
 
 For check density options, in the configuration yaml are needed 2 variables:
